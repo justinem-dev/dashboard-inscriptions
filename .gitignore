@@ -1,0 +1,7 @@
+# Secrets
+**/.env.local
+**/.env
+
+# Next.js
+sessions-dashboard/.next/
+sessions-dashboard/node_modules/

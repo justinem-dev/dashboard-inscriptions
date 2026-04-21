@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Capacité des sessions — Médéré</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    @keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: .4 } }
+    .skeleton { animation: pulse 1.5s ease-in-out infinite; background: #e5e7eb; border-radius: 4px; }
+  </style>
+</head>
+
+<body style="background:#F9F5F2; min-height:100vh;">
+
+<!-- ═══════════════════════════════════════════
+     CONFIGURATION — remplir avec vos valeurs
+════════════════════════════════════════════ -->
+<script>
+  const CONFIG = {
+    table:  'tblGVEqH7KCo2GlXz',
+  };
+  const CAPACITY = 15;
+</script>
+
+<!-- ─── Header ─────────────────────────────── -->
+<header class="sticky top-0 z-10 border-b border-neutral-200 backdrop-blur-sm"
+        style="background:rgba(255,255,255,0.85);">
+  <div class="max-w-3xl mx-auto px-6 h-16 flex items-center gap-4">
+    <span class="text-lg font-bold tracking-tight" style="color:#1a1a1a;">Médéré</span>
+    <div class="h-5 w-px bg-neutral-200"></div>
+    <span class="text-sm font-medium text-neutral-500">Capacité des sessions</span>
+  </div>
+</header>
+
+<!-- ─── Main ───────────────────────────────── -->
+<main class="max-w-3xl mx-auto px-6 py-10">
+
+  <h1 class="text-2xl font-semibold text-neutral-800 mb-1">Rechercher une session</h1>
+  <p class="text-sm text-neutral-500 mb-8">Classe virtuelle — 15 places par session</p>
+
+  <!-- Search -->
+  <div class="relative mb-8">
+    <div class="relative flex items-center">
+      <svg class="pointer-events-none absolute left-3 h-4 w-4 text-neutral-400"
+           fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      <input id="search-input" type="text"
+        placeholder="Numéro de session, nom de la formation…"
+        class="w-full rounded-lg border border-neutral-200 bg-white py-3 pl-10 pr-10 text-sm
+               text-neutral-800 shadow-sm placeholder:text-neutral-400
+               focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition" />
+      <button id="clear-btn"
+        class="absolute right-3 hidden text-neutral-400 hover:text-neutral-600 transition-colors"
+        aria-label="Effacer">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M18 6 6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Dropdown -->
+    <div id="dropdown"
+      class="absolute left-0 right-0 top-full z-20 mt-1 hidden overflow-hidden
+             rounded-lg border border-neutral-200 bg-white shadow-lg">
+    </div>
+  </div>
+
+  <!-- État initial -->
+  <div id="initial-state" class="flex flex-col items-center justify-center py-24 text-neutral-400 select-none">
+    <svg class="mb-4 h-12 w-12 opacity-30" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+      <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+    </svg>
+    <p class="text-sm">Tapez au moins 2 caractères pour rechercher une session</p>
+  </div>
+
+  <!-- Session card (injectée par JS) -->
+  <div id="session-card" class="hidden"></div>
+
+</main>
+
+<!-- ═══════════════════════════════════════════
+     LOGIQUE
+════════════════════════════════════════════ -->
+<script>
+// ─── Utilitaires ──────────────────────────────────────────────────────────────
+
+function capacityColor(inscrits) {
+  const r = inscrits / CAPACITY;
+  if (r >= 1)   return '#dc2626';
+  if (r >= 0.8) return '#d97706';
+  return '#16a34a';
+}
+
+function formatDate(iso) {
+  if (!iso) return '—';
+  const [y, m, d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function escapeFormula(str) {
+  return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+// ─── API Airtable ─────────────────────────────────────────────────────────────
+
+const FIELDS = [
+  'session_id',
+  'Numéro de session',
+  'Nom de la formation',
+  'Format (from Formation liée)',
+  'Date de début de session',
+  'Date de fin de session',
+  "Date limite d'inscription",
+  "Nombre d'inscrits",
+];
+
+async function fetchSessions(query, suggest = true) {
+  const q = escapeFormula(query);
+  const cv = `FIND("Classe virtuelle", ARRAYJOIN({Format (from Formation liée)})) > 0`;
+  const sessionMatch  = `FIND("${q}", {session_id}) = 1`;
+  const nameMatch     = `SEARCH(LOWER("${q}"), LOWER({Nom de la formation})) > 0`;
+  const numMatch      = `SEARCH("${q}", {Numéro de session}) > 0`;
+
+  const orClause = suggest
+    ? `OR(${sessionMatch}, ${nameMatch})`
+    : `OR(${sessionMatch}, ${nameMatch}, ${numMatch})`;
+
+  const filter  = `AND(${cv}, ${orClause})`;
+  const max     = suggest ? 8 : 20;
+
+  const params = new URLSearchParams({ filterByFormula: filter, maxRecords: max });
+  FIELDS.forEach(f => params.append('fields[]', f));
+
+  const url = `/api/airtable/${CONFIG.table}?${params}`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(`${res.status} — ${body?.error?.message ?? 'Airtable error'}`);
+  }
+
+  const data = await res.json();
+  return data.records.map(r => ({
+    id:                    r.id,
+    session_id:            r.fields['session_id']                      ?? '',
+    numeroSession:         r.fields['Numéro de session']               ?? '',
+    nomFormation:          r.fields['Nom de la formation']             ?? '',
+    format:                r.fields['Format (from Formation liée)']    ?? [],
+    dateDebut:             r.fields['Date de début de session']        ?? '',
+    dateFin:               r.fields['Date de fin de session']          ?? '',
+    dateLimiteInscription: r.fields["Date limite d'inscription"]       ?? '',
+    nombreInscrits:        r.fields["Nombre d'inscrits"]               ?? 0,
+  }));
+}
+
+// ─── Rendu dropdown ───────────────────────────────────────────────────────────
+
+function renderSkeletons() {
+  const dd = document.getElementById('dropdown');
+  dd.innerHTML = [1,2,3].map(() => `
+    <div class="flex items-center gap-3 px-4 py-3 border-b border-neutral-100 last:border-0">
+      <div class="skeleton h-3 w-24"></div>
+      <div class="skeleton h-3 flex-1"></div>
+      <div class="skeleton h-3 w-14"></div>
+    </div>`).join('');
+  dd.classList.remove('hidden');
+}
+
+function renderSuggestions(sessions) {
+  const dd = document.getElementById('dropdown');
+  if (!sessions.length) {
+    dd.innerHTML = `<p class="px-4 py-3 text-sm text-neutral-500">Aucune session trouvée.</p>`;
+    dd.classList.remove('hidden');
+    return;
+  }
+  dd.innerHTML = sessions.map(s => {
+    const restants = Math.max(0, CAPACITY - s.nombreInscrits);
+    const color    = capacityColor(s.nombreInscrits);
+    const fmt      = s.format[0] ? `<span class="hidden sm:inline text-[10px] font-medium px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-500">${s.format[0]}</span>` : '';
+    return `
+      <button data-id="${s.id}"
+        class="w-full text-left flex items-center gap-3 px-4 py-3 border-b border-neutral-100 last:border-0
+               hover:bg-neutral-50 transition-colors suggestion-item">
+        <span class="font-mono text-[11px] text-neutral-400 shrink-0">${s.session_id}</span>
+        <span class="flex-1 text-sm text-neutral-700 truncate">${s.nomFormation}</span>
+        ${fmt}
+        <span class="text-[11px] text-neutral-400 shrink-0 tabular-nums">${s.nombreInscrits}/${CAPACITY}</span>
+        <span class="text-[11px] font-semibold shrink-0 tabular-nums" style="color:${color}">${restants} pl.</span>
+      </button>`;
+  }).join('');
+  dd.classList.remove('hidden');
+}
+
+function renderError(msg) {
+  const dd = document.getElementById('dropdown');
+  dd.innerHTML = `<p class="px-4 py-3 text-sm text-red-500">⚠ ${msg ?? 'Erreur lors du chargement.'}</p>`;
+  dd.classList.remove('hidden');
+}
+
+// ─── Rendu SessionCard ────────────────────────────────────────────────────────
+
+function renderCard(s) {
+  const restants   = Math.max(0, CAPACITY - s.nombreInscrits);
+  const color      = capacityColor(s.nombreInscrits);
+  const pct        = Math.min(100, Math.round((s.nombreInscrits / CAPACITY) * 100));
+  const isComplete = s.nombreInscrits >= CAPACITY;
+
+  const badgeStyle = isComplete
+    ? 'background:#fee2e2;color:#dc2626'
+    : 'background:#dcfce7;color:#16a34a';
+  const badgeLabel = isComplete ? 'Complet' : 'Disponible';
+
+  const formats = s.format.map(f =>
+    `<span class="text-xs font-medium px-2.5 py-1 rounded-full bg-neutral-100 text-neutral-600">${f}</span>`
+  ).join('');
+
+  const limiteBadge = s.dateLimiteInscription
+    ? `<span class="text-xs font-medium px-2.5 py-1 rounded-full"
+          style="background:#fef3c7;color:#d97706">Limite : ${s.dateLimiteInscription}</span>`
+    : '';
+
+  document.getElementById('session-card').innerHTML = `
+    <div class="bg-white rounded-lg border border-neutral-200 shadow-sm p-6">
+
+      <!-- En-tête carte -->
+      <div class="flex items-start justify-between gap-4 mb-4">
+        <div class="flex-1 min-w-0">
+          <h2 class="text-lg font-semibold text-neutral-800 leading-snug mb-1.5">${s.nomFormation}</h2>
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-sm text-neutral-500">Session ${s.numeroSession}</span>
+            <span class="text-neutral-300">·</span>
+            <span class="font-mono text-[11px] text-neutral-400">${s.session_id}</span>
+          </div>
+        </div>
+        <span class="shrink-0 text-xs font-semibold px-3 py-1 rounded-full" style="${badgeStyle}">
+          ${badgeLabel}
+        </span>
+      </div>
+
+      <!-- Formats -->
+      ${formats ? `<div class="flex flex-wrap gap-1.5 mb-5">${formats}</div>` : ''}
+
+      <!-- Dates -->
+      <div class="flex flex-wrap items-center gap-2.5 mb-6">
+        <div class="flex items-center gap-1.5 text-sm text-neutral-600">
+          <svg class="h-3.5 w-3.5 text-neutral-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
+          </svg>
+          <span>${formatDate(s.dateDebut)} → ${formatDate(s.dateFin)}</span>
+        </div>
+        ${limiteBadge}
+      </div>
+
+      <!-- KPIs -->
+      <div class="grid grid-cols-3 gap-3 mb-6">
+        <div class="bg-neutral-50 rounded-lg p-4 text-center">
+          <p class="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">Capacité</p>
+          <p class="text-2xl font-semibold tabular-nums" style="color:#737373">${CAPACITY}</p>
+        </div>
+        <div class="bg-neutral-50 rounded-lg p-4 text-center">
+          <p class="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">Inscrits</p>
+          <p class="text-2xl font-semibold tabular-nums" style="color:${color}">${s.nombreInscrits}</p>
+        </div>
+        <div class="bg-neutral-50 rounded-lg p-4 text-center">
+          <p class="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-1.5">Restants</p>
+          <p class="text-2xl font-semibold tabular-nums" style="color:${color}">${restants}</p>
+        </div>
+      </div>
+
+      <!-- Barre de progression -->
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-[10px] font-semibold uppercase tracking-wider text-neutral-400">Taux de remplissage</span>
+          <span class="text-sm font-semibold tabular-nums" style="color:${color}">${pct}%</span>
+        </div>
+        <div class="h-2.5 rounded-full overflow-hidden" style="background:#f3f4f6">
+          <div class="h-full rounded-full transition-all duration-500"
+               style="width:${pct}%;background:${color}"></div>
+        </div>
+      </div>
+
+    </div>`;
+
+  document.getElementById('session-card').classList.remove('hidden');
+  document.getElementById('initial-state').classList.add('hidden');
+}
+
+// ─── Contrôleur principal ─────────────────────────────────────────────────────
+
+let debounceTimer = null;
+let selectedSession = null;
+let cachedSessions  = [];
+
+const input    = document.getElementById('search-input');
+const clearBtn = document.getElementById('clear-btn');
+const dropdown = document.getElementById('dropdown');
+
+function closeDropdown() {
+  dropdown.classList.add('hidden');
+  dropdown.innerHTML = '';
+}
+
+function resetAll() {
+  selectedSession = null;
+  closeDropdown();
+  document.getElementById('session-card').classList.add('hidden');
+  document.getElementById('initial-state').classList.remove('hidden');
+}
+
+// Sélection d'une suggestion
+function selectSession(id) {
+  const s = cachedSessions.find(x => x.id === id);
+  if (!s) return;
+  selectedSession = s;
+  input.value = `${s.session_id} — ${s.nomFormation}`;
+  clearBtn.classList.remove('hidden');
+  closeDropdown();
+  renderCard(s);
+}
+
+// Délégation sur le dropdown
+dropdown.addEventListener('mousedown', e => {
+  const btn = e.target.closest('[data-id]');
+  if (btn) { e.preventDefault(); selectSession(btn.dataset.id); }
+});
+
+// Input
+input.addEventListener('input', () => {
+  const val = input.value.trim();
+  clearBtn.classList.toggle('hidden', !val);
+
+  if (selectedSession) {
+    selectedSession = null;
+    document.getElementById('session-card').classList.add('hidden');
+    document.getElementById('initial-state').classList.remove('hidden');
+  }
+
+  clearTimeout(debounceTimer);
+
+  if (val.length < 2) { closeDropdown(); return; }
+
+  debounceTimer = setTimeout(async () => {
+    renderSkeletons();
+    try {
+      cachedSessions = await fetchSessions(val, true);
+      renderSuggestions(cachedSessions);
+    } catch(err) {
+      renderError(err.message);
+    }
+  }, 250);
+});
+
+input.addEventListener('blur', () => setTimeout(closeDropdown, 150));
+
+clearBtn.addEventListener('click', () => {
+  input.value = '';
+  clearBtn.classList.add('hidden');
+  input.focus();
+  resetAll();
+});
+</script>
+
+</body>
+</html>

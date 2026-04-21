@@ -1,0 +1,78 @@
+import { NextRequest, NextResponse } from 'next/server';
+
+const BASE_ID = process.env.AIRTABLE_BASE_ID!;
+const TABLE_ID = 'tblGVEqH7KCo2GlXz';
+const TOKEN = process.env.AIRTABLE_TOKEN!;
+
+const AIRTABLE_FIELDS = [
+  'session_id',
+  'Numéro de session',
+  'Nom de la formation',
+  'Format (from Formation liée)',
+  'Date de début de session',
+  'Date de fin de session',
+  "Date limite d'inscription",
+  "Nombre d'inscrits",
+];
+
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const query = (searchParams.get('q') ?? '').trim();
+  const mode = searchParams.get('mode');
+
+  if (query.length < 2) {
+    return NextResponse.json([]);
+  }
+
+  const isSuggest = mode === 'suggest';
+  const maxRecords = isSuggest ? 8 : 20;
+
+  // Escape double quotes to prevent formula injection
+  const safeQuery = query.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+
+  const cvFilter = `FIND("Classe virtuelle", ARRAYJOIN({Format (from Formation liée)})) > 0`;
+  const sessionIdMatch = `FIND("${safeQuery}", {session_id}) = 1`;
+  const nameMatch = `SEARCH(LOWER("${safeQuery}"), LOWER({Nom de la formation})) > 0`;
+  const numSessionMatch = `SEARCH("${safeQuery}", {Numéro de session}) > 0`;
+
+  const orClause = isSuggest
+    ? `OR(${sessionIdMatch}, ${nameMatch})`
+    : `OR(${sessionIdMatch}, ${nameMatch}, ${numSessionMatch})`;
+
+  const filterFormula = `AND(${cvFilter}, ${orClause})`;
+
+  const params = new URLSearchParams();
+  params.set('filterByFormula', filterFormula);
+  params.set('maxRecords', String(maxRecords));
+  AIRTABLE_FIELDS.forEach((f) => params.append('fields[]', f));
+
+  const url = `https://api.airtable.com/v0/${BASE_ID}/${TABLE_ID}?${params.toString()}`;
+
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${TOKEN}` },
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    console.error('Airtable error', res.status, body);
+    return NextResponse.json({ error: 'Airtable request failed' }, { status: res.status });
+  }
+
+  const data = await res.json();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sessions = data.records.map((record: any) => ({
+    id: record.id,
+    session_id: record.fields['session_id'] ?? '',
+    numeroSession: record.fields['Numéro de session'] ?? '',
+    nomFormation: record.fields['Nom de la formation'] ?? '',
+    format: record.fields['Format (from Formation liée)'] ?? [],
+    dateDebut: record.fields['Date de début de session'] ?? '',
+    dateFin: record.fields['Date de fin de session'] ?? '',
+    dateLimiteInscription: record.fields["Date limite d'inscription"] ?? '',
+    nombreInscrits: record.fields["Nombre d'inscrits"] ?? 0,
+  }));
+
+  return NextResponse.json(sessions);
+}
