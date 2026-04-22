@@ -47,6 +47,8 @@ export async function GET(request: NextRequest) {
   const params = new URLSearchParams();
   params.set('filterByFormula', filterFormula);
   params.set('maxRecords', String(maxRecords));
+  params.set('sort[0][field]', "Date 1ère soirée CV / Date Présentiel");
+  params.set('sort[0][direction]', 'asc');
   AIRTABLE_FIELDS.forEach((f) => params.append('fields[]', f));
 
   const url = `https://api.airtable.com/v0/${BASE_ID}/${TABLE_ID}?${params.toString()}`;
