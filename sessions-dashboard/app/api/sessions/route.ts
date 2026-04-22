@@ -39,7 +39,8 @@ export async function GET(request: NextRequest) {
     ? `OR(${sessionIdMatch}, ${nameMatch})`
     : `OR(${sessionIdMatch}, ${nameMatch}, ${numSessionMatch})`;
 
-  const filterFormula = `AND(${cvFilter}, ${orClause})`;
+  const dateFilter = `OR(NOT({Date limite d'inscription}), NOT(IS_BEFORE({Date limite d'inscription}, TODAY())))`;
+  const filterFormula = `AND(${cvFilter}, ${dateFilter}, ${orClause})`;
 
   const params = new URLSearchParams();
   params.set('filterByFormula', filterFormula);
