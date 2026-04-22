@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     ? `OR(${sessionIdMatch}, ${nameMatch})`
     : `OR(${sessionIdMatch}, ${nameMatch}, ${numSessionMatch})`;
 
-  const dateFilter = `NOT(IS_BEFORE({Date 1ère soirée CV / Date Présentiel}, TODAY()))`;
+  const dateFilter = `AND({Date limite d'inscription}, NOT(IS_BEFORE({Date limite d'inscription}, TODAY())))`;
   const filterFormula = `AND(${cvFilter}, ${dateFilter}, ${orClause})`;
 
   const params = new URLSearchParams();
