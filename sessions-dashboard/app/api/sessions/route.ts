@@ -13,6 +13,8 @@ const AIRTABLE_FIELDS = [
   'Date de fin de session',
   "Date limite d'inscription",
   "Nombre d'inscrits",
+  "Date 1ère soirée CV / Date Présentiel",
+  "Date 2ème soirée CV",
 ];
 
 export async function GET(request: NextRequest) {
@@ -73,7 +75,15 @@ export async function GET(request: NextRequest) {
     dateFin: record.fields['Date de fin de session'] ?? '',
     dateLimiteInscription: record.fields["Date limite d'inscription"] ?? '',
     nombreInscrits: record.fields["Nombre d'inscrits"] ?? 0,
+    date1ereCV: record.fields["Date 1ère soirée CV / Date Présentiel"] ?? '',
+    date2emeCV: record.fields["Date 2ème soirée CV"] ?? '',
   }));
+
+  sessions.sort((a: any, b: any) => {
+    if (!a.date1ereCV) return 1;
+    if (!b.date1ereCV) return -1;
+    return a.date1ereCV < b.date1ereCV ? -1 : 1;
+  });
 
   return NextResponse.json(sessions);
 }

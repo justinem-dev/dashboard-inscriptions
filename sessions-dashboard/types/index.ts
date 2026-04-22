@@ -8,4 +8,6 @@ export interface SessionRecord {
   dateFin: string;
   dateLimiteInscription: string;
   nombreInscrits: number;
+  date1ereCV: string;
+  date2emeCV: string;
 }

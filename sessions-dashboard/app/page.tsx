@@ -47,21 +47,30 @@ function SuggestionItem({
   const restants = Math.max(0, CAPACITY - session.nombreInscrits);
   const color = capacityColor(session.nombreInscrits);
 
+  const fmtDate = (iso: string) => {
+    if (!iso) return '';
+    const [y, m, d] = iso.split('-');
+    return `${d}/${m}/${y}`;
+  };
+
+  const dates = [session.date1ereCV, session.date2emeCV]
+    .filter(Boolean)
+    .map(fmtDate)
+    .join(' · ');
+
   return (
     <button
-      onMouseDown={(e) => e.preventDefault()} // prevent blur before click
+      onMouseDown={(e) => e.preventDefault()}
       onClick={() => onSelect(session)}
       className="w-full text-left flex items-center gap-3 px-4 py-3 border-b border-neutral-100 last:border-0 hover:bg-neutral-50 transition-colors"
     >
       <span className="font-mono text-[11px] text-neutral-400 shrink-0 leading-none">
         {session.session_id}
       </span>
-      <span className="flex-1 text-sm text-neutral-700 truncate">{session.nomFormation}</span>
-      {session.format.length > 0 && (
-        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-500 shrink-0 hidden sm:block">
-          {session.format[0]}
-        </span>
+      {dates && (
+        <span className="text-[11px] text-neutral-400 shrink-0">{dates}</span>
       )}
+      <span className="flex-1 text-sm text-neutral-700 truncate">{session.nomFormation}</span>
       <span className="text-[11px] text-neutral-400 shrink-0 tabular-nums">
         {session.nombreInscrits}/{CAPACITY}
       </span>
