@@ -12,6 +12,8 @@
     body { font-family: 'Inter', sans-serif; }
     @keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: .4 } }
     .skeleton { animation: pulse 1.5s ease-in-out infinite; background: #e5e7eb; border-radius: 4px; }
+    @keyframes spin { to { transform: rotate(360deg) } }
+    .spinning { animation: spin 0.7s linear infinite; }
   </style>
 </head>
 
@@ -237,9 +239,16 @@ function renderCard(s) {
             <span class="font-mono text-[11px] text-neutral-400">${s.session_id}</span>
           </div>
         </div>
-        <span class="shrink-0 text-xs font-semibold px-3 py-1 rounded-full" style="${badgeStyle}">
-          ${badgeLabel}
-        </span>
+        <div class="flex items-center gap-2 shrink-0">
+          <span class="text-xs font-semibold px-3 py-1 rounded-full" style="${badgeStyle}">${badgeLabel}</span>
+          <button id="refresh-btn" onclick="refreshCard()"
+            class="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors"
+            title="Rafraîchir">
+            <svg id="refresh-icon" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M4 4v5h.582M20 20v-5h-.581M5.077 9A9 9 0 0 1 19.938 12.5M18.923 15A9 9 0 0 1 4.062 11.5"/>
+            </svg>
+          </button>
+        </div>
       </div>
 
       <!-- Formats -->
@@ -288,6 +297,24 @@ function renderCard(s) {
 
   document.getElementById('session-card').classList.remove('hidden');
   document.getElementById('initial-state').classList.add('hidden');
+}
+
+// ─── Rafraîchissement ─────────────────────────────────────────────────────────
+
+async function refreshCard() {
+  if (!selectedSession) return;
+  const icon = document.getElementById('refresh-icon');
+  if (icon) icon.classList.add('spinning');
+  try {
+    const results = await fetchSessions(selectedSession.session_id, false);
+    const updated = results.find(r => r.id === selectedSession.id);
+    if (updated) { selectedSession = updated; renderCard(updated); }
+  } catch(err) {
+    console.error(err);
+  } finally {
+    const i = document.getElementById('refresh-icon');
+    if (i) i.classList.remove('spinning');
+  }
 }
 
 // ─── Contrôleur principal ─────────────────────────────────────────────────────
