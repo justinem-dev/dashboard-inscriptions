@@ -72,7 +72,7 @@ function SuggestionItem({
   );
 }
 
-function SessionCard({ session }: { session: SessionRecord }) {
+function SessionCard({ session, onRefresh, refreshing }: { session: SessionRecord; onRefresh: () => void; refreshing: boolean }) {
   const restants = Math.max(0, CAPACITY - session.nombreInscrits);
   const color = capacityColor(session.nombreInscrits);
   const pct = Math.min(100, Math.round((session.nombreInscrits / CAPACITY) * 100));
@@ -92,16 +92,26 @@ function SessionCard({ session }: { session: SessionRecord }) {
             <span className="font-mono text-[11px] text-neutral-400">{session.session_id}</span>
           </div>
         </div>
-        <span
-          className="shrink-0 text-xs font-semibold px-3 py-1 rounded-full"
-          style={
-            isComplete
-              ? { background: '#fee2e2', color: '#dc2626' }
-              : { background: '#dcfce7', color: '#16a34a' }
-          }
-        >
-          {isComplete ? 'Complet' : 'Disponible'}
-        </span>
+        <div className="flex items-center gap-2 shrink-0">
+          <span
+            className="text-xs font-semibold px-3 py-1 rounded-full"
+            style={
+              isComplete
+                ? { background: '#fee2e2', color: '#dc2626' }
+                : { background: '#dcfce7', color: '#16a34a' }
+            }
+          >
+            {isComplete ? 'Complet' : 'Disponible'}
+          </span>
+          <button
+            onClick={onRefresh}
+            disabled={refreshing}
+            title="Rafraîchir"
+            style={{ border: '1px solid #d1d5db', borderRadius: 6, padding: '4px 10px', fontSize: 12, color: '#6b7280', background: '#fff', cursor: 'pointer', opacity: refreshing ? 0.5 : 1 }}
+          >
+            {refreshing ? '…' : '↻ Rafraîchir'}
+          </button>
+        </div>
       </div>
 
       {/* Format badges */}
@@ -180,6 +190,7 @@ export default function Page() {
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [selectedSession, setSelectedSession] = useState<SessionRecord | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Debounce input → query
@@ -212,6 +223,19 @@ export default function Page() {
     setSelectedSession(session);
     setInputValue(`${session.session_id} — ${session.nomFormation}`);
     setDropdownOpen(false);
+  }
+
+  async function handleRefresh() {
+    if (!selectedSession) return;
+    setRefreshing(true);
+    try {
+      const res = await fetch(`/api/sessions?q=${encodeURIComponent(selectedSession.session_id)}&mode=suggest`);
+      const data: SessionRecord[] = await res.json();
+      const updated = data.find((s) => s.id === selectedSession.id);
+      if (updated) setSelectedSession(updated);
+    } finally {
+      setRefreshing(false);
+    }
   }
 
   function handleClear() {
@@ -317,7 +341,7 @@ export default function Page() {
         )}
 
         {/* Session card */}
-        {selectedSession && <SessionCard session={selectedSession} />}
+        {selectedSession && <SessionCard session={selectedSession} onRefresh={handleRefresh} refreshing={refreshing} />}
       </main>
     </div>
   );
