@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sessions présentiel — à venir</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f0f2f5;
+      color: #1a1a2e;
+      min-height: 100vh;
+      padding: 32px 24px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 36px;
+    }
+
+    header h1 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: #1a1a2e;
+    }
+
+    header p {
+      color: #6b7280;
+      margin-top: 6px;
+      font-size: 0.9rem;
+    }
+
+    .notice {
+      max-width: 1100px;
+      margin: 0 auto 20px;
+      background: #fffbeb;
+      border: 1px solid #fcd34d;
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-size: 0.82rem;
+      color: #92400e;
+    }
+
+    .kpi-row {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 28px;
+    }
+
+    .kpi {
+      background: white;
+      border-radius: 12px;
+      padding: 18px 28px;
+      text-align: center;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+      min-width: 150px;
+    }
+
+    .kpi .label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #6b7280;
+      margin-bottom: 6px;
+    }
+
+    .kpi .value {
+      font-size: 1.9rem;
+      font-weight: 700;
+    }
+
+    .kpi .sub {
+      font-size: 0.75rem;
+      color: #9ca3af;
+      margin-top: 4px;
+    }
+
+    .kpi.purple .value { color: #8b5cf6; }
+    .kpi.green  .value { color: #10b981; }
+    .kpi.orange .value { color: #f59e0b; }
+    .kpi.red    .value { color: #ef4444; }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 28px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .card h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #374151;
+    }
+
+    .count-label {
+      font-size: 0.82rem;
+      color: #9ca3af;
+    }
+
+    #status {
+      text-align: center;
+      padding: 60px 20px;
+      color: #6b7280;
+      font-size: 0.95rem;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 28px;
+      height: 28px;
+      border: 3px solid #e5e7eb;
+      border-top-color: #8b5cf6;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-bottom: 12px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error { color: #ef4444; }
+
+    /* TABLE */
+    .table-wrap { overflow-x: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+
+    thead th {
+      text-align: left;
+      padding: 10px 14px;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #9ca3af;
+      border-bottom: 2px solid #f3f4f6;
+      white-space: nowrap;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid #f3f4f6;
+    }
+
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #fafafa; }
+
+    tbody td {
+      padding: 14px 14px;
+      vertical-align: top;
+    }
+
+    .td-formation {
+      min-width: 220px;
+      max-width: 280px;
+    }
+
+    .formation-name {
+      font-weight: 600;
+      color: #111827;
+      line-height: 1.4;
+    }
+
+    .td-lieu {
+      min-width: 130px;
+      color: #374151;
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
+
+    .td-date {
+      white-space: nowrap;
+      color: #374151;
+      font-size: 0.85rem;
+    }
+
+    .td-formateur {
+      min-width: 130px;
+      color: #374151;
+      font-size: 0.85rem;
+    }
+
+    .td-prix {
+      white-space: nowrap;
+      color: #374151;
+      font-variant-numeric: tabular-nums;
+      font-size: 0.875rem;
+    }
+
+    .td-inscrits {
+      min-width: 90px;
+    }
+
+    .inscrits-cell {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .inscrits-num {
+      font-weight: 600;
+      font-size: 0.875rem;
+      min-width: 16px;
+      text-align: right;
+    }
+
+    .bar-wrap {
+      flex: 1;
+      height: 5px;
+      background: #f3f4f6;
+      border-radius: 3px;
+      min-width: 40px;
+      max-width: 60px;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 3px;
+    }
+
+    .bar-fill.high   { background: #10b981; }
+    .bar-fill.medium { background: #f59e0b; }
+    .bar-fill.low    { background: #ef4444; }
+    .bar-fill.zero   { background: #e5e7eb; width: 100% !important; }
+
+    .td-dlimite {
+      white-space: nowrap;
+      color: #6b7280;
+      font-size: 0.82rem;
+    }
+
+    .td-statut { white-space: nowrap; }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 11px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .badge.vide   { background: #fee2e2; color: #ef4444; }
+    .badge.faible { background: #fef3c7; color: #d97706; }
+    .badge.moyen  { background: #dbeafe; color: #3b82f6; }
+    .badge.bon    { background: #d1fae5; color: #059669; }
+
+    .na { color: #d1d5db; font-style: italic; font-size: 0.8rem; }
+
+    .empty-state {
+      text-align: center;
+      padding: 48px;
+      color: #9ca3af;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Sessions en présentiel — à venir</h1>
+  <p id="last-update">Chargement en cours…</p>
+</header>
+
+<div id="status">
+  <div class="spinner"></div><br>
+  Récupération des données Airtable…
+</div>
+
+<div id="content" style="display:none">
+
+  <div class="kpi-row" id="kpi-row"></div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2>Détail des sessions</h2>
+      <span class="count-label" id="session-count"></span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Formation</th>
+            <th>Date &amp; horaire</th>
+            <th>Prix</th>
+            <th>Inscrits</th>
+            <th>Date limite</th>
+            <th>Statut</th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+      <div id="empty-msg" class="empty-state" style="display:none">Aucune session à venir trouvée.</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const TOKEN    = 'patoLIhGfmkNoyOtH.6fd93260a939ff0fb831b1e994ec5f5b44472c21835b0112443b4790647a1ca8';
+  const BASE_ID  = 'app3GnMOzJn7VHMji';
+  const TABLE_ID = 'tblGVEqH7KCo2GlXz';
+
+  // Field IDs
+  const F_SESSION_ID   = 'fldX2r0h8PKjG8m38'; // session_id (formule)
+  const F_NOM          = 'fldPZLMC2zf9B0jB4'; // Nom de la formation
+  const F_DATE_PRES    = 'fldaROtuhuHBBGjoL'; // Date Présentiel
+  const F_DATE_DEBUT   = 'fldW2l1vL57VRIPY2'; // Date de début de session
+  const F_DATE_FIN     = 'fldoCCEPp5ub12MTb'; // Date de fin de session
+  const F_TEMPS_LISIBLE= 'fldMPlidCQvBUGBpI'; // Dates lisibles ex: "4 juin 2026 9h – 18h"
+  const F_DATE_LIMITE  = 'fldnvd1ImN1bRHlgC'; // Date limite d'inscription (formula → string)
+  const F_FORMAT       = 'flduK2AAvnLDaamuN'; // Format (lookup)
+  const F_INSCRITS     = 'fldp2HxEdc6WIZ6Go'; // Nombre d'inscrits
+  const F_PRIX         = 'fldBmV8gVhtfQoTSZ'; // Prix (lookup)
+
+  // Champs non encore présents dans Airtable — à brancher quand créés :
+  // const F_LIEU      = '???';
+  // const F_FORMATEUR = '???';
+
+  const EXCLUDED_SESSION_IDS = ['92622325304_26047'];
+
+  let sessions = [];
+
+  function getFormat(fields) {
+    const f = fields[F_FORMAT];
+    if (!f) return null;
+    // REST API retourne un tableau simple pour multipleLookupValues
+    if (Array.isArray(f)) {
+      for (const v of f) if (v && v.name) return v.name;
+      return null;
+    }
+    // Fallback format MCP
+    for (const arr of Object.values(f.valuesByLinkedRecordId || {}))
+      for (const v of arr) if (v && v.name) return v.name;
+    return null;
+  }
+
+  function getPrix(fields) {
+    const f = fields[F_PRIX];
+    if (!f) return null;
+    // REST API retourne un tableau simple
+    if (Array.isArray(f)) return f.length ? f[0] : null;
+    // Fallback format MCP
+    for (const arr of Object.values(f.valuesByLinkedRecordId || {}))
+      if (arr.length) return arr[0];
+    return null;
+  }
+
+  function parseDate(s) {
+    return s ? new Date(s + 'T00:00:00') : null;
+  }
+
+  function getStatut(inscrits) {
+    if (inscrits === 0 || inscrits == null) return { label: 'Vide',   cls: 'vide' };
+    if (inscrits <= 3)                       return { label: 'Faible', cls: 'faible' };
+    if (inscrits <= 8)                       return { label: 'Moyen',  cls: 'moyen' };
+    return                                          { label: 'Bon',    cls: 'bon' };
+  }
+
+  async function fetchAll() {
+    let records = [];
+    let offset  = null;
+    const fields = [F_SESSION_ID, F_NOM, F_DATE_PRES, F_DATE_DEBUT, F_DATE_FIN,
+                    F_TEMPS_LISIBLE, F_DATE_LIMITE, F_FORMAT, F_INSCRITS, F_PRIX];
+
+    do {
+      const params = new URLSearchParams({ pageSize: 100 });
+      fields.forEach(id => params.append('fields[]', id));
+      if (offset) params.set('offset', offset);
+
+      const res = await fetch(
+        `https://api.airtable.com/v0/${BASE_ID}/${TABLE_ID}?${params}`,
+        { headers: { Authorization: `Bearer ${TOKEN}` } }
+      );
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error?.message || `Erreur ${res.status}`);
+      }
+      const data = await res.json();
+      records = records.concat(data.records);
+      offset  = data.offset || null;
+    } while (offset);
+
+    return records;
+  }
+
+  function renderKPIs() {
+    const total = sessions.length;
+    const totalInscrits = sessions.reduce((s, r) => s + (r[F_INSCRITS] || 0), 0);
+    const vides = sessions.filter(r => !(r[F_INSCRITS] > 0)).length;
+    const avg = total > 0 ? (totalInscrits / total).toFixed(1) : '—';
+
+    document.getElementById('kpi-row').innerHTML = `
+      <div class="kpi purple">
+        <div class="label">Sessions à venir</div>
+        <div class="value">${total}</div>
+      </div>
+      <div class="kpi green">
+        <div class="label">Inscrits total</div>
+        <div class="value">${totalInscrits}</div>
+        <div class="sub">moy. ${avg} / session</div>
+      </div>
+      <div class="kpi orange">
+        <div class="label">Sessions vides</div>
+        <div class="value">${vides}</div>
+        <div class="sub">0 inscrit</div>
+      </div>
+      <div class="kpi red">
+        <div class="label">Sessions faibles</div>
+        <div class="value">${sessions.filter(r => { const n = r[F_INSCRITS] || 0; return n > 0 && n <= 3; }).length}</div>
+        <div class="sub">1 à 3 inscrits</div>
+      </div>
+    `;
+  }
+
+  function renderTable() {
+    const tbody    = document.getElementById('table-body');
+    const emptyMsg = document.getElementById('empty-msg');
+
+    if (sessions.length === 0) {
+      tbody.innerHTML = '';
+      emptyMsg.style.display = 'block';
+      document.getElementById('session-count').textContent = '';
+      return;
+    }
+
+    emptyMsg.style.display = 'none';
+    document.getElementById('session-count').textContent = `${sessions.length} session${sessions.length > 1 ? 's' : ''}`;
+
+    const maxInscrits = Math.max(...sessions.map(r => r[F_INSCRITS] || 0), 1);
+
+    tbody.innerHTML = sessions.map(r => {
+      const inscrits  = r[F_INSCRITS] != null ? r[F_INSCRITS] : 0;
+      const prix      = getPrix(r);
+      const prixStr   = prix != null
+        ? prix.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' €'
+        : '—';
+
+      // Dates : préférer le champ lisible Webflow, sinon formater la date brute
+      const dateLisible = r[F_TEMPS_LISIBLE] || (() => {
+        const d = parseDate(r[F_DATE_PRES] || r[F_DATE_DEBUT]);
+        return d ? d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
+      })();
+
+      const dateLimite  = r[F_DATE_LIMITE] || '—';
+      const statut      = getStatut(inscrits);
+      const pct         = Math.round((inscrits / maxInscrits) * 100);
+      const barCls      = inscrits === 0 ? 'zero' : inscrits <= 3 ? 'medium' : 'high';
+
+      return `
+        <tr>
+          <td class="td-formation">
+            <div class="formation-name">${r[F_NOM] || '—'}</div>
+          </td>
+          <td class="td-date">${dateLisible}</td>
+          <td class="td-prix">${prixStr}</td>
+          <td class="td-inscrits">
+            <div class="inscrits-cell">
+              <span class="inscrits-num">${inscrits}</span>
+              <div class="bar-wrap"><div class="bar-fill ${barCls}" style="width:${pct}%"></div></div>
+            </div>
+          </td>
+          <td class="td-dlimite">${dateLimite}</td>
+          <td class="td-statut"><span class="badge ${statut.cls}">${statut.label}</span></td>
+        </tr>`;
+    }).join('');
+  }
+
+  async function init() {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const records = await fetchAll();
+
+      sessions = records
+        .filter(r => r.cellValuesByFieldId)
+        .map(r => r.cellValuesByFieldId)
+        .filter(r => {
+          if (getFormat(r) !== 'Présentiel') return false;
+          const d = parseDate(r[F_DATE_PRES] || r[F_DATE_DEBUT]);
+          if (!d || d < today) return false;
+          return !EXCLUDED_SESSION_IDS.includes(r[F_SESSION_ID]);
+        })
+        .sort((a, b) => {
+          const da = parseDate(a[F_DATE_PRES] || a[F_DATE_DEBUT]);
+          const db = parseDate(b[F_DATE_PRES] || b[F_DATE_DEBUT]);
+          return da - db;
+        });
+
+      document.getElementById('last-update').textContent =
+        `Mis à jour le ${new Date().toLocaleString('fr-FR')}`;
+
+      document.getElementById('status').style.display  = 'none';
+      document.getElementById('content').style.display = 'block';
+
+      renderKPIs();
+      renderTable();
+
+    } catch (e) {
+      document.getElementById('status').innerHTML =
+        `<span class="error">Erreur : ${e.message}</span>`;
+    }
+  }
+
+  init();
+</script>
+</body>
+</html>
